@@ -1,147 +1,194 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { ArrowUpIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AutoResizeTextarea } from "@/components/autoresize-textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import MDEditor from '@uiw/react-md-editor';
 
-interface Message {
-  id: string;
-  content: string;
-  role: 'user' | 'ai';
-  timestamp: Date;
-}
+type Message = {
+  role: "user" | "assistant";
+  content: string | object;
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+  toolResponses?: any[];
+};
 
 export function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isAutoScrolling = useRef(false);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const scrollToBottom = () => {
-    if (scrollRef.current && !isAutoScrolling.current) {
-      isAutoScrolling.current = true;
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-      setTimeout(() => {
-        isAutoScrolling.current = false;
-      }, 100);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const userMessage: Message = { role: "user", content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
+
+    // Add a temp loading msg for the llms....
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "Hang on..." },
+    ]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      });
+
+      const data = await res.json();
+      const content =
+        typeof data?.content === "string"
+          ? data.content
+          : "Sorry... got no response from the server";
+
+      const toolResponses = Array.isArray(data?.toolResponses)
+        ? data.toolResponses
+        : [];
+
+      setMessages((prev) => [
+        ...prev.slice(0, -1),
+        { role: "assistant", content, toolResponses },
+      ]);
+    } catch (err) {
+      console.error("Chat error:", err);
+      setMessages((prev) => [
+        ...prev.slice(0, -1),
+        { role: "assistant", content: "Oops! Something went wrong." },
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content: input,
-      role: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'This is a sample AI response. Replace this with actual AI integration.',
-        role: 'ai',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 1000);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+    }
   };
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-background">
-      <div className="p-4 border-b flex-none">
-        <h2 className="text-xl font-semibold">Chat with AI</h2>
-      </div>
-      
-      <div className="flex-1 overflow-hidden relative min-h-0">
-        <ScrollArea className="absolute inset-0">
-          <div className="space-y-4 px-4 py-6">
-            {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                No messages yet. Start a conversation!
-              </div>
-            )}
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  'flex w-full gap-3 items-start',
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                {message.role === 'ai' && (
-                  <Avatar className="mt-1 flex-shrink-0">
-                    <span className="text-xs">AI</span>
-                  </Avatar>
-                )}
-                <div
-                  className={cn(
-                    'max-w-[80%] rounded-lg p-4 shadow-sm',
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground ml-12'
-                      : 'bg-muted mr-12'
+    <main className="ring-none mx-auto flex h-svh max-h-svh w-full flex-col items-stretch border-none">
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        {messages.length === 0 ? (
+          <header className="m-auto flex max-w-96 flex-col gap-5 text-center">
+            <h1 className="text-2xl font-semibold leading-none tracking-tight">
+              MCP Powered AI Chatbot
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              This is an AI chatbot app built with{" "}
+              <span className="text-foreground">Next.js</span>,{" "}
+              <span className="text-foreground">MCP backend</span>
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Built with 🤍 by Shrijal Acharya (@shricodev)
+            </p>
+          </header>
+        ) : (
+          <div className="my-4 flex h-fit min-h-full flex-col gap-4">
+            {messages.map((message, index) => (
+              <div key={index} className="flex flex-col gap-2">
+                {message.role === "assistant" &&
+                  Array.isArray(message.toolResponses) &&
+                  message.toolResponses.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">
+                          Tool Responses
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Accordion type="multiple" className="w-full">
+                          {message.toolResponses.map((toolRes, i) => (
+                            <AccordionItem key={i} value={`item-${i}`}>
+                              <AccordionTrigger>
+                                Tool Call #{i + 1}
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <pre className="whitespace-pre-wrap break-words text-sm">
+                                  {JSON.stringify(toolRes, null, 2)}
+                                </pre>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </CardContent>
+                    </Card>
                   )}
+
+                <div
+                  className="max-w-[80%] rounded-xl px-3 py-2 text-sm data-[role=assistant]:self-start data-[role=user]:self-end [&_.prose]:text-current [&_pre]:!bg-black/10 [&_code]:!text-current [&_a]:!text-blue-500 [&_a]:underline"
+                  data-role={message.role}
+                  style={{
+                    alignSelf:
+                      message.role === "user" ? "flex-end" : "flex-start",
+                    backgroundColor:
+                      message.role === "user" ? "#3b82f6" : "#f3f4f6",
+                    color: message.role === "user" ? "white" : "black",
+                  }}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                  <span className="text-xs opacity-50 block mt-2">
-                    {message.timestamp.toLocaleTimeString()}
-                  </span>
+                  {message.role === "assistant" && typeof message.content === "string" ? (
+                    <div data-color-mode={(message.role as "user" | "assistant") === "user" ? "light" : "dark"}>
+                      <MDEditor.Markdown 
+                        source={message.content} 
+                        style={{ 
+                          backgroundColor: 'transparent',
+                          color: 'inherit'
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    typeof message.content === "string"
+                      ? message.content
+                      : JSON.stringify(message.content, null, 2)
+                  )}
                 </div>
-                {message.role === 'user' && (
-                  <Avatar className="mt-1 flex-shrink-0">
-                    <span className="text-xs">You</span>
-                  </Avatar>
-                )}
               </div>
             ))}
-            {isLoading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground pl-12">
-                <div className="animate-pulse">AI is typing...</div>
-              </div>
-            )}
-            <div ref={scrollRef} className="h-px w-full" />
           </div>
-        </ScrollArea>
+        )}
       </div>
 
-      <div className="p-4 border-t mt-auto flex-none">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="flex gap-2"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1"
-            disabled={isLoading}
-          />
-          <Button 
-            type="submit" 
-            disabled={isLoading || !input.trim()}
-          >
-            Send
-          </Button>
-        </form>
-      </div>
-    </div>
+      <form
+        onSubmit={handleSubmit}
+        className="border-input bg-background focus-within:ring-ring/10 pb-20 relative mx-6 mb-6 flex items-center rounded-[16px] border px-3 py-1.5 pr-8 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-0"
+      >
+        <AutoResizeTextarea
+          onKeyDown={handleKeyDown}
+          onChange={(e) => setInput(e)}
+          value={input}
+          placeholder="Enter a message"
+          className="placeholder:text-muted-foreground flex-1 bg-transparent focus:outline-none"
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute bottom-1 right-1 size-6 rounded-full"
+              disabled={!input.trim() || loading}
+            >
+              <ArrowUpIcon size={16} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent sideOffset={12}>Submit</TooltipContent>
+        </Tooltip>
+      </form>
+    </main>
   );
 }

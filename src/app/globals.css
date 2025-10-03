@@ -151,3 +151,83 @@
 
 /* theme */
 
+/* markdown editor */
+.w-md-editor-text-pre > code,
+.w-md-editor-text-input {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.wmde-markdown {
+  background-color: transparent !important;
+}
+
+.wmde-markdown-color {
+  color: inherit !important;
+}
+
+[data-color-mode="light"] .wmde-markdown-color code[class*="language-"],
+[data-color-mode="light"] .wmde-markdown-color pre[class*="language-"] {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: inherit !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown-color code[class*="language-"],
+[data-color-mode="dark"] .wmde-markdown-color pre[class*="language-"] {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: inherit !important;
+}
+
+.wmde-markdown-color pre {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .wmde-markdown-color pre {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Table styles */
+.wmde-markdown table,
+.markdown-body table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  background-color: var(--background) !important;
+}
+
+.wmde-markdown table th,
+.wmde-markdown table td,
+.markdown-body table th,
+.markdown-body table td {
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.wmde-markdown table th,
+.markdown-body table th {
+  background-color: var(--muted) !important;
+  font-weight: 600;
+}
+
+/* Dark mode specific overrides */
+.dark .wmde-markdown table,
+.dark .markdown-body table {
+  background-color: var(--background) !important;
+}
+
+.dark .wmde-markdown table th,
+.dark .wmde-markdown table td,
+.dark .markdown-body table th,
+.dark .markdown-body table td {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border);
+}
+
+.dark .wmde-markdown table th,
+.dark .markdown-body table th {
+  background-color: var(--muted) !important;
+}
+

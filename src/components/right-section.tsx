@@ -13,7 +13,7 @@ export function RightSection() {
     <div
       className={cn(
         'fixed right-0 top-0 h-screen bg-background border-l transition-all duration-300 flex',
-        isCollapsed ? 'w-12' : 'w-[400px]'
+        isCollapsed ? 'w-12' : 'w-[800px]'
       )}
     >
       <Button
